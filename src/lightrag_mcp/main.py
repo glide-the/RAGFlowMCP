@@ -1,5 +1,5 @@
 """
-Entry point for LightRAG MCP server.
+Entry point for Ragflow MCP server.
 """
 
 import logging
@@ -24,11 +24,11 @@ def main():
         log_level = getattr(logging, "INFO")
         logging.getLogger().setLevel(log_level)
 
-        logger.info("Starting LightRAG MCP server")
+        logger.info("Starting Ragflow MCP server")
         logger.info(
-            f"LightRAG API server is expected to be already running and available at: {config.LIGHTRAG_API_BASE_URL}"
+            f"Ragflow API server is expected to be already running and available at: {config.RAGFLOW_API_BASE_URL}"
         )
-        if config.LIGHTRAG_API_KEY:
+        if config.RAGFLOW_API_KEY:
             logger.info("API key is configured")
         else:
             logger.warning("No API key provided")

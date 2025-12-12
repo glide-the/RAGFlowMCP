@@ -29,6 +29,17 @@ from .query_request_mode import QueryRequestMode
 from .query_response import QueryResponse
 from .relation_request import RelationRequest
 from .validation_error import ValidationError
+from .ragflow_retrieval_request import (
+    RagflowMetadataCondition,
+    RagflowMetadataConditionClause,
+    RagflowRetrievalRequest,
+)
+from .ragflow_retrieval_response import (
+    RagflowChunk,
+    RagflowDocAgg,
+    RagflowRetrievalData,
+    RagflowRetrievalResponse,
+)
 
 __all__ = (
     "BodyInsertBatchDocumentsFileBatchPost",
@@ -59,6 +70,13 @@ __all__ = (
     "QueryRequestConversationHistoryType0Item",
     "QueryRequestMode",
     "QueryResponse",
+    "RagflowChunk",
+    "RagflowDocAgg",
+    "RagflowMetadataCondition",
+    "RagflowMetadataConditionClause",
+    "RagflowRetrievalData",
+    "RagflowRetrievalRequest",
+    "RagflowRetrievalResponse",
     "RelationRequest",
     "RelationRequestProperties",
     "ValidationError",

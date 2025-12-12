@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "lightrag_mcp"
 version = "0.1.0"
-description = "MCP Server for LightRAG"
+description = "MCP Server for Ragflow retrieval"
 requires-python = ">=3.11"
 readme = "README.md"
 authors = [

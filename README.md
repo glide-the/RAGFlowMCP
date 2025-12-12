@@ -1,19 +1,16 @@
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/shemhamforash23-lightrag-mcp-badge.png)](https://mseep.ai/app/shemhamforash23-lightrag-mcp)
 
-# LightRAG MCP Server
+# Ragflow Retrieval MCP Server
 
-MCP server for integrating LightRAG with AI tools. Provides a unified interface for interacting with LightRAG API through the MCP protocol.
+MCP server for integrating Ragflow retrieval with AI tools. Provides a unified interface for interacting with the Ragflow `/api/v1/retrieval` endpoint through the MCP protocol.
 
 ## Description
 
-LightRAG MCP Server is a bridge between LightRAG API and MCP-compatible clients. It allows using LightRAG (Retrieval-Augmented Generation) capabilities in various AI tools that support the MCP protocol.
+Ragflow MCP Server is a bridge between Ragflow retrieval API and MCP-compatible clients. It focuses on exposing a single retrieval tool that mirrors Ragflow's `/api/v1/retrieval` capabilities.
 
 ### Key Features
 
-- **Information Retrieval**: Execute semantic and keyword queries to documents
-- **Document Management**: Upload, index, and track document status
-- **Knowledge Graph Operations**: Manage entities and relationships in the knowledge graph
-- **Monitoring**: Check LightRAG API status and document processing
+- **Information Retrieval**: Execute semantic, keyword, and hybrid retrieval against Ragflow datasets/documents
 
 ## Installation
 
@@ -32,45 +29,46 @@ uv pip install -e .
 ## Requirements
 
 - Python 3.11+
-- Running LightRAG API server
+- Running Ragflow API server with `/api/v1/retrieval` enabled
 
 ## Usage
 
-**Important**: LightRAG MCP server should only be run as an MCP server through an MCP client configuration file (mcp-config.json).
+**Important**: Ragflow MCP server should only be run as an MCP server through an MCP client configuration file (mcp-config.json).
 
 ### Command Line Options
 
-The following arguments are available when configuring the server in mcp-config.json:
+The following arguments are available when configuring the server in mcp-config.json (can also be provided via environment variables `RAGFLOW_API_BASE` and `RAGFLOW_API_KEY`):
 
-- `--host`: LightRAG API host (default: localhost)
-- `--port`: LightRAG API port (default: 9621)
-- `--api-key`: LightRAG API key (optional)
+- `--host`: Ragflow API host (default: localhost)
+- `--port`: Ragflow API port (default: 9621)
+- `--api-key`: Ragflow API key (optional)
+- `--base-url`: Full Ragflow API base URL (overrides host/port)
 
-### Integration with LightRAG API
+### Integration with Ragflow API
 
-The MCP server requires a running LightRAG API server. Start it as follows:
+The MCP server requires a running Ragflow API server. Start it as follows:
 
 ```bash
 # Create virtual environment
 uv venv --python 3.11
 
-# Install dependencies
-uv pip install -r LightRAG/lightrag/api/requirements.txt
+# Install dependencies for Ragflow API
+uv pip install -r requirements.txt
 
-# Start LightRAG API
-uv run LightRAG/lightrag/api/lightrag_server.py --host localhost --port 9621 --working-dir ./rag_storage --input-dir ./input --llm-binding openai --embedding-binding openai --log-level DEBUG
+# Start Ragflow API (example command)
+uv run ragflow_api.py --host localhost --port 9621 --working-dir ./rag_storage --input-dir ./input --log-level DEBUG
 ```
 
 ### Setting up as MCP server
 
-To set up LightRAG MCP as an MCP server, add the following configuration to your MCP client configuration file (e.g., `mcp-config.json`):
+To set up Ragflow MCP as an MCP server, add the following configuration to your MCP client configuration file (e.g., `mcp-config.json`):
 
 #### Using uvenv (uvx):
 
 ```json
 {
   "mcpServers": {
-    "lightrag-mcp": {
+    "ragflow-mcp": {
       "command": "uvx",
       "args": [
         "lightrag_mcp",
@@ -91,7 +89,7 @@ To set up LightRAG MCP as an MCP server, add the following configuration to your
 ```json
 {
   "mcpServers": {
-    "lightrag-mcp": {
+    "ragflow-mcp": {
       "command": "uv",
       "args": [
         "--directory",
@@ -114,30 +112,7 @@ Replace `/path/to/lightrag_mcp` with the actual path to your lightrag-mcp direct
 
 ## Available MCP Tools
 
-### Document Queries
-- `query_document`: Execute a query to documents through LightRAG API
-
-### Document Management
-- `insert_document`: Add text directly to LightRAG storage
-- `upload_document`: Upload document from file to the /input directory
-- `insert_file`: Add document from file directly to storage
-- `insert_batch`: Add batch of documents from directory
-- `scan_for_new_documents`: Start scanning the /input directory for new documents
-- `get_documents`: Get list of all uploaded documents
-- `get_pipeline_status`: Get status of document processing in pipeline
-
-### Knowledge Graph Operations
-- `get_graph_labels`: Get labels (node and relationship types) from knowledge graph
-- `create_entities`: Create multiple entities in knowledge graph
-- `edit_entities`: Edit multiple existing entities in knowledge graph
-- `delete_by_entities`: Delete multiple entities from knowledge graph by name
-- `delete_by_doc_ids`: Delete all entities and relationships associated with multiple documents
-- `create_relations`: Create multiple relationships between entities in knowledge graph
-- `edit_relations`: Edit multiple relationships between entities in knowledge graph
-- `merge_entities`: Merge multiple entities into one with relationship migration
-
-### Monitoring
-- `check_lightrag_health`: Check LightRAG API status
+- `ragflow_retrieval`: Execute Ragflow `/api/v1/retrieval` against specified dataset or document IDs
 
 ## Development
 

@@ -5,8 +5,8 @@ Entry point for Ragflow MCP server.
 import logging
 import sys
 
-from lightrag_mcp import config
-from lightrag_mcp.server import mcp
+from raglfow_mcp import config
+from raglfow_mcp.server import mcp
 
 logging.basicConfig(
     level=logging.INFO,

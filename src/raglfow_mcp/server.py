@@ -8,10 +8,10 @@ from typing import Any, Awaitable, Dict, List, Optional, cast
 from mcp.server.fastmcp import Context, FastMCP
 from pydantic import Field
 
-from lightrag_mcp import config
-from lightrag_mcp.client.light_rag_server_api_client.client import AuthenticatedClient
-from lightrag_mcp.client.light_rag_server_api_client.models import RagflowRetrievalResponse
-from lightrag_mcp.client.light_rag_server_api_client.ragflow_client import (
+from raglfow_mcp import config
+from raglfow_mcp.client.light_rag_server_api_client.client import AuthenticatedClient
+from raglfow_mcp.client.light_rag_server_api_client.models import RagflowRetrievalResponse
+from raglfow_mcp.client.light_rag_server_api_client.ragflow_client import (
     build_ragflow_client,
     ragflow_retrieve_chunks,
 )

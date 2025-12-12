@@ -71,7 +71,7 @@ To set up Ragflow MCP as an MCP server, add the following configuration to your 
     "ragflow-mcp": {
       "command": "uvx",
       "args": [
-        "lightrag_mcp",
+        "raglfow_mcp",
         "--host",
         "localhost",
         "--port",
@@ -93,9 +93,9 @@ To set up Ragflow MCP as an MCP server, add the following configuration to your 
       "command": "uv",
       "args": [
         "--directory",
-        "/path/to/lightrag_mcp",
+        "/path/to/raglfow_mcp",
         "run",
-        "src/lightrag_mcp/main.py",
+        "src/raglfow_mcp/main.py",
         "--host",
         "localhost",
         "--port",
@@ -108,7 +108,7 @@ To set up Ragflow MCP as an MCP server, add the following configuration to your 
 }
 ```
 
-Replace `/path/to/lightrag_mcp` with the actual path to your lightrag-mcp directory.
+Replace `/path/to/raglfow_mcp` with the actual path to your raglfow-mcp directory.
 
 ## Available MCP Tools
 

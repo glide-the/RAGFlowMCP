@@ -1,12 +1,12 @@
 """
-Entry point for Ragflow MCP server.
+Entry point for Vanna MCP server with Ragflow compatibility.
 """
 
 import logging
 import sys
 
-from raglfow_mcp import config
-from raglfow_mcp.server import mcp
+from mcp import config
+from mcp.server import mcp
 
 logging.basicConfig(
     level=logging.INFO,
@@ -24,14 +24,22 @@ def main():
         log_level = getattr(logging, "INFO")
         logging.getLogger().setLevel(log_level)
 
-        logger.info("Starting Ragflow MCP server")
+        logger.info("Starting Vanna MCP server (with Ragflow retrieval)")
         logger.info(
             f"Ragflow API server is expected to be already running and available at: {config.RAGFLOW_API_BASE_URL}"
         )
+        logger.info(
+            f"Vanna API server is expected to be already running and available at: {config.VANNA_API_BASE_URL}"
+        )
         if config.RAGFLOW_API_KEY:
-            logger.info("API key is configured")
+            logger.info("Ragflow API key is configured")
         else:
-            logger.warning("No API key provided")
+            logger.warning("No Ragflow API key provided")
+
+        if config.VANNA_API_KEY:
+            logger.info("Vanna API key is configured")
+        else:
+            logger.warning("No Vanna API key provided")
 
         mcp.run(transport="stdio")
 

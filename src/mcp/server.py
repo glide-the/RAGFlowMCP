@@ -1,4 +1,5 @@
-"""Main module for Ragflow MCP server."""
+"""Main module for Vanna MCP server (with Ragflow retrieval)."""
+
 import logging
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
@@ -8,12 +9,17 @@ from typing import Any, Awaitable, Dict, List, Optional, cast
 from mcp.server.fastmcp import Context, FastMCP
 from pydantic import Field
 
-from raglfow_mcp import config
-from raglfow_mcp.client.ragflow_server_api_client.client import AuthenticatedClient
-from raglfow_mcp.client.ragflow_server_api_client.models import RagflowRetrievalResponse
-from raglfow_mcp.client.ragflow_server_api_client.ragflow_client import (
+from mcp import config
+from mcp.client.ragflow_server_api_client.client import AuthenticatedClient
+from mcp.client.ragflow_server_api_client.models import RagflowRetrievalResponse
+from mcp.client.ragflow_server_api_client.ragflow_client import (
     build_ragflow_client,
     ragflow_retrieve_chunks,
+)
+from mcp.client.vanna_server_api_client.client import AuthenticatedClient as VannaClient
+from mcp.client.vanna_server_api_client.vanna_client import (
+    build_vanna_client,
+    chat_sse_stream,
 )
 
 logger = logging.getLogger(__name__)
@@ -24,6 +30,7 @@ class AppContext:
     """Application context with typed resources."""
 
     ragflow_client: AuthenticatedClient
+    vanna_client: VannaClient
 
 
 @asynccontextmanager
@@ -34,15 +41,20 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
         base_url=config.RAGFLOW_API_BASE_URL,
         api_key=config.RAGFLOW_API_KEY,
     )
+    vanna_client = build_vanna_client(
+        base_url=config.VANNA_API_BASE_URL,
+        api_key=config.VANNA_API_KEY,
+    )
 
     try:
-        yield AppContext(ragflow_client=ragflow_client)
+        yield AppContext(ragflow_client=ragflow_client, vanna_client=vanna_client)
     finally:
         await ragflow_client.get_async_httpx_client().aclose()
-        logger.info("Ragflow MCP Server stopped")
+        await vanna_client.get_async_httpx_client().aclose()
+        logger.info("Vanna MCP Server stopped")
 
 
-mcp = FastMCP("Ragflow MCP Server", lifespan=app_lifespan)
+mcp = FastMCP("Vanna MCP Server", lifespan=app_lifespan)
 
 
 def format_response(result: Any, is_error: bool = False) -> Dict[str, Any]:
@@ -83,6 +95,31 @@ async def execute_ragflow_operation(
 
         app_ctx = cast(AppContext, ctx.request_context.lifespan_context)
         client = app_ctx.ragflow_client
+
+        logger.info(f"Executing operation: {operation_name}")
+        result = await operation_func(client)
+
+        return format_response(result)
+    except Exception as e:  # noqa: BLE001
+        logger.exception(f"Error during {operation_name}: {str(e)}")
+        return format_response(str(e), is_error=True)
+
+
+async def execute_vanna_operation(
+    operation_name: str,
+    operation_func: Callable[[VannaClient], Awaitable[Any]],
+    ctx: Context,
+) -> Dict[str, Any]:
+    """Wrapper for executing Vanna operations with standard formatting."""
+
+    try:
+        if not ctx or not ctx.request_context or not ctx.request_context.lifespan_context:
+            return format_response(
+                f"Error: Request context is not available for {operation_name}", is_error=True
+            )
+
+        app_ctx = cast(AppContext, ctx.request_context.lifespan_context)
+        client = app_ctx.vanna_client
 
         logger.info(f"Executing operation: {operation_name}")
         result = await operation_func(client)
@@ -167,6 +204,45 @@ async def ragflow_retrieval(
         operation_func=_operation,
         ctx=ctx,
     )
+
+
+@mcp.tool(
+    name="vanna_chat_sse",
+    description="Call Vanna /api/v0/chat_sse and stream responses end-to-end",
+)
+async def vanna_chat_sse(
+    ctx: Context,
+    message: str = Field(description="User message to send to Vanna"),
+    user_email: Optional[str] = Field(default=None, description="User email"),
+    conversation_id: Optional[str] = Field(
+        default=None,
+        description="Existing conversation id to continue; if omitted a new conversation is started",
+    ),
+    agent_id: Optional[str] = Field(default=None, description="Optional Vanna agent id"),
+    acceptable_responses: Optional[List[str]] = Field(
+        default=None,
+        description="Filter response types: text/image/link/error/dataframe/plotly/sql",
+    ),
+) -> AsyncIterator[Dict[str, Any]]:
+    """Stream chat responses from Vanna via SSE."""
+
+    if not ctx or not ctx.request_context or not ctx.request_context.lifespan_context:
+        raise RuntimeError("Request context is not available for vanna_chat_sse")
+
+    app_ctx = cast(AppContext, ctx.request_context.lifespan_context)
+    vanna_client = app_ctx.vanna_client
+
+    await ctx.debug(f"Calling Vanna chat_sse with message: {message[:50]}...")
+
+    async for event in chat_sse_stream(
+        client=vanna_client,
+        message=message,
+        user_email=user_email,
+        conversation_id=conversation_id,
+        agent_id=agent_id,
+        acceptable_responses=acceptable_responses,
+    ):
+        yield event
 
 
 __all__ = ["mcp"]

@@ -26,8 +26,8 @@ dev = [
 ]
 
 [project.scripts]
-raglfow-mcp = "mcp.main:main"
-vanna-mcp = "mcp.main:main"
+raglfow-mcp = "data_analyst_mcp.main:main"
+vanna-mcp = "data_analyst_mcp.main:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/mcp"]
+packages = ["src/data_analyst_mcp"]

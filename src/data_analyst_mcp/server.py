@@ -9,15 +9,17 @@ from typing import Any, Awaitable, Dict, List, Optional, cast
 from mcp.server.fastmcp import Context, FastMCP
 from pydantic import Field
 
-from mcp import config
-from mcp.client.ragflow_server_api_client.client import AuthenticatedClient
-from mcp.client.ragflow_server_api_client.models import RagflowRetrievalResponse
-from mcp.client.ragflow_server_api_client.ragflow_client import (
+from data_analyst_mcp import config
+from data_analyst_mcp.client.ragflow_server_api_client.client import AuthenticatedClient
+from data_analyst_mcp.client.ragflow_server_api_client.models import RagflowRetrievalResponse
+from data_analyst_mcp.client.ragflow_server_api_client.ragflow_client import (
     build_ragflow_client,
     ragflow_retrieve_chunks,
 )
-from mcp.client.vanna_server_api_client.client import AuthenticatedClient as VannaClient
-from mcp.client.vanna_server_api_client.vanna_client import (
+from data_analyst_mcp.client.vanna_server_api_client.client import (
+    AuthenticatedClient as VannaClient,
+)
+from data_analyst_mcp.client.vanna_server_api_client.vanna_client import (
     build_vanna_client,
     chat_sse_stream,
 )

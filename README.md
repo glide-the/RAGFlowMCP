@@ -90,9 +90,9 @@ Both the legacy `raglfow-mcp` and the new `vanna-mcp` entry points map to the sa
       "command": "uv",
       "args": [
         "--directory",
-        "/path/to/mcp",
+        "/path/to/data_analyst_mcp",
         "run",
-        "src/mcp/main.py",
+        "src/data_analyst_mcp/main.py",
         "--host",
         "localhost",
         "--port",
@@ -105,7 +105,7 @@ Both the legacy `raglfow-mcp` and the new `vanna-mcp` entry points map to the sa
 }
 ```
 
-Replace `/path/to/mcp` with the actual path to your MCP directory.
+Replace `/path/to/data_analyst_mcp` with the actual path to your MCP directory.
 
 ## Available MCP Tools
 
@@ -115,7 +115,10 @@ Replace `/path/to/mcp` with the actual path to your MCP directory.
 ### Streaming example
 
 ```python
-from mcp.client.vanna_server_api_client.vanna_client import build_vanna_client, chat_sse_stream
+from data_analyst_mcp.client.vanna_server_api_client.vanna_client import (
+    build_vanna_client,
+    chat_sse_stream,
+)
 
 client = build_vanna_client()
 

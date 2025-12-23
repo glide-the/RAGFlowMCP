@@ -1,10 +1,10 @@
 """Main module for Vanna MCP server (with Ragflow retrieval)."""
 
 import logging
-from collections.abc import AsyncIterator, Callable
+from collections.abc import Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any, Awaitable, Dict, List, Optional, cast
+from typing import Any, AsyncIterator, Awaitable, Dict, List, Optional, cast
 
 from mcp.server.fastmcp import Context, FastMCP
 from pydantic import Field
@@ -80,6 +80,85 @@ def format_response(result: Any, is_error: bool = False) -> Dict[str, Any]:
         return {"status": "success", "response": result.to_dict()}
 
     return {"status": "success", "response": str(result)}
+
+
+def aggregate_vanna_events(events: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Aggregate Vanna chat SSE events into a single response."""
+
+    texts: List[str] = []
+    images: List[Dict[str, Any]] = []
+    links: List[Dict[str, Any]] = []
+    buttons: List[Dict[str, Any]] = []
+    dataframes: List[Dict[str, Any]] = []
+    plotlies: List[Dict[str, Any]] = []
+    sqls: List[str] = []
+    errors: List[str] = []
+
+    conversation_id: Optional[str] = None
+
+    for event in events:
+        event_type = event.get("type")
+        cid = event.get("conversation_id")
+        if cid is not None:
+            conversation_id = cid
+
+        if event_type == "text":
+            text = event.get("text")
+            if text:
+                texts.append(text)
+        elif event_type == "image":
+            images.append(
+                {
+                    "image_url": event.get("image_url"),
+                    "caption": event.get("caption"),
+                }
+            )
+        elif event_type == "link":
+            links.append(
+                {
+                    "title": event.get("title"),
+                    "url": event.get("url"),
+                    "description": event.get("description"),
+                }
+            )
+        elif event_type == "buttons":
+            buttons.append(
+                {
+                    "text": event.get("text"),
+                    "buttons": event.get("buttons") or [],
+                }
+            )
+        elif event_type == "dataframe":
+            dataframes.append({"json_table": event.get("json_table")})
+        elif event_type == "plotly":
+            plotlies.append({"json_plotly": event.get("json_plotly")})
+        elif event_type == "sql":
+            query = event.get("query")
+            if query:
+                sqls.append(query)
+        elif event_type == "error":
+            err = event.get("error")
+            if err:
+                errors.append(err)
+        elif event_type == "end":
+            continue
+
+    final_text = "".join(texts) if texts else None
+
+    result: Dict[str, Any] = {
+        "conversation_id": conversation_id,
+        "text": final_text,
+        "images": images or None,
+        "links": links or None,
+        "buttons": buttons or None,
+        "dataframes": dataframes or None,
+        "plotly": plotlies or None,
+        "sql": sqls or None,
+        "errors": errors or None,
+        "raw_events": events,
+    }
+
+    return {k: v for k, v in result.items() if v is not None}
 
 
 async def execute_ragflow_operation(
@@ -210,7 +289,7 @@ async def ragflow_retrieval(
 
 @mcp.tool(
     name="vanna_chat_sse",
-    description="Call Vanna /api/v0/chat_sse and stream responses end-to-end",
+    description="Call Vanna /api/v0/chat_sse and return aggregated result",
 )
 async def vanna_chat_sse(
     ctx: Context,
@@ -225,26 +304,25 @@ async def vanna_chat_sse(
         default=None,
         description="Filter response types: text/image/link/error/dataframe/plotly/sql",
     ),
-) -> AsyncIterator[Dict[str, Any]]:
-    """Stream chat responses from Vanna via SSE."""
+) -> Dict[str, Any]:
+    """Call Vanna chat_sse, aggregate events, and return a single result."""
 
-    if not ctx or not ctx.request_context or not ctx.request_context.lifespan_context:
-        raise RuntimeError("Request context is not available for vanna_chat_sse")
+    async def _operation(vanna_client: VannaClient) -> Dict[str, Any]:
+        events: List[Dict[str, Any]] = []
 
-    app_ctx = cast(AppContext, ctx.request_context.lifespan_context)
-    vanna_client = app_ctx.vanna_client
+        async for event in chat_sse_stream(
+            client=vanna_client,
+            message=message,
+            user_email=user_email,
+            conversation_id=conversation_id,
+            agent_id=agent_id,
+            acceptable_responses=acceptable_responses,
+        ):
+            events.append(event)
 
-    await ctx.debug(f"Calling Vanna chat_sse with message: {message[:50]}...")
+        return aggregate_vanna_events(events)
 
-    async for event in chat_sse_stream(
-        client=vanna_client,
-        message=message,
-        user_email=user_email,
-        conversation_id=conversation_id,
-        agent_id=agent_id,
-        acceptable_responses=acceptable_responses,
-    ):
-        yield event
+    return await execute_vanna_operation("vanna_chat_sse", _operation, ctx)
 
 
 __all__ = ["mcp"]

@@ -7,8 +7,8 @@ import re
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict, List, TypeVar, Union
 
-from raglfow_mcp.client.ragflow_server_api_client.api.default import async_get_health
-from raglfow_mcp.client.ragflow_server_api_client.api.documents import (
+from mcp.client.ragflow_server_api_client.api.default import async_get_health
+from mcp.client.ragflow_server_api_client.api.documents import (
     async_get_documents,
     async_get_pipeline_status,
     async_insert_document,
@@ -17,7 +17,7 @@ from raglfow_mcp.client.ragflow_server_api_client.api.documents import (
     async_scan_for_new_documents,
     async_upload_document,
 )
-from raglfow_mcp.client.ragflow_server_api_client.api.graph import (
+from mcp.client.ragflow_server_api_client.api.graph import (
     async_create_entity,
     async_create_relation,
     async_delete_by_doc_id,
@@ -27,11 +27,11 @@ from raglfow_mcp.client.ragflow_server_api_client.api.graph import (
     async_get_graph_labels,
     async_merge_entities,
 )
-from raglfow_mcp.client.ragflow_server_api_client.api.query import (
+from mcp.client.ragflow_server_api_client.api.query import (
     async_query_document,
 )
-from raglfow_mcp.client.ragflow_server_api_client.client import AuthenticatedClient
-from raglfow_mcp.client.ragflow_server_api_client.models import (
+from mcp.client.ragflow_server_api_client.client import AuthenticatedClient
+from mcp.client.ragflow_server_api_client.models import (
     BodyInsertFileDocumentsFilePost,
     BodyUploadToInputDirDocumentsUploadPost,
     DocsStatusesResponse,
@@ -46,18 +46,18 @@ from raglfow_mcp.client.ragflow_server_api_client.models import (
     relation_request,
     relation_response,
 )
-from raglfow_mcp.client.ragflow_server_api_client.models.entity_request import EntityRequest
-from raglfow_mcp.client.ragflow_server_api_client.models.entity_response import EntityResponse
-from raglfow_mcp.client.ragflow_server_api_client.models.merge_entities_request import (
+from mcp.client.ragflow_server_api_client.models.entity_request import EntityRequest
+from mcp.client.ragflow_server_api_client.models.entity_response import EntityResponse
+from mcp.client.ragflow_server_api_client.models.merge_entities_request import (
     MergeEntitiesRequest,
 )
-from raglfow_mcp.client.ragflow_server_api_client.models.merge_entities_request_merge_strategy_type_0 import (
+from mcp.client.ragflow_server_api_client.models.merge_entities_request_merge_strategy_type_0 import (
     MergeEntitiesRequestMergeStrategyType0,
 )
-from raglfow_mcp.client.ragflow_server_api_client.models.status_message_response import (
+from mcp.client.ragflow_server_api_client.models.status_message_response import (
     StatusMessageResponse,
 )
-from raglfow_mcp.client.ragflow_server_api_client.types import File
+from mcp.client.ragflow_server_api_client.types import File
 
 from .client.ragflow_server_api_client.errors import UnexpectedStatus
 

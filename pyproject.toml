@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "raglfow_mcp"
+name = "vanna-mcp"
 version = "0.1.0"
-description = "MCP Server for Ragflow retrieval"
+description = "MCP Server for Vanna with Ragflow retrieval compatibility"
 requires-python = ">=3.11"
 readme = "README.md"
 authors = [
@@ -26,7 +26,8 @@ dev = [
 ]
 
 [project.scripts]
-raglfow-mcp = "raglfow_mcp.main:main"
+raglfow-mcp = "mcp.main:main"
+vanna-mcp = "mcp.main:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/raglfow_mcp"]
+packages = ["src/mcp"]

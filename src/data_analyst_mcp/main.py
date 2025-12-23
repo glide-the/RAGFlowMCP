@@ -5,8 +5,8 @@ Entry point for Vanna MCP server with Ragflow compatibility.
 import logging
 import sys
 
-from mcp import config
-from mcp.server import mcp
+from data_analyst_mcp import config
+from data_analyst_mcp.server import mcp
 
 logging.basicConfig(
     level=logging.INFO,

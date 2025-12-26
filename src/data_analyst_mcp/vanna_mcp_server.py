@@ -12,9 +12,26 @@ from mcp.server.fastmcp import Context, FastMCP
 from vanna.servers.base.chat_handler import ChatHandler
 
 import logging
-import sys
+import sys 
+from mcp.server.session import ServerSession
 
-from data_analyst_mcp import config
+####################################################################################
+# Temporary monkeypatch which avoids crashing when a POST message is received
+# before a connection has been initialized, e.g: after a deployment.
+# pylint: disable-next=protected-access
+old__received_request = ServerSession._received_request
+
+
+async def _received_request(self, *args, **kwargs):
+    try:
+        return await old__received_request(self, *args, **kwargs)
+    except RuntimeError:
+        pass
+
+
+# pylint: disable-next=protected-access
+ServerSession._received_request = _received_request
+####################################################################################
 
 @dataclass
 class AppState:
@@ -24,9 +41,9 @@ class AppState:
 
 @asynccontextmanager
 async def app_lifespan(_: FastMCP) -> AsyncIterator[AppState]:
-    agent = get_vanna_agent()
-    chat_handler = ChatHandler(agent)
-    state = AppState(agent=agent, chat_handler=chat_handler)
+    # Lazy initialization - agent and handler will be created on first use
+    # This prevents blocking MCP initialization
+    state = AppState(agent=None, chat_handler=None)
     try:
         yield state
     finally:
@@ -49,6 +66,14 @@ def get_state(ctx: Context) -> AppState:
     raise RuntimeError("Lifespan state is not available")
 
 
+def ensure_initialized(state: AppState) -> AppState:
+    """Initialize agent and chat handler on first use."""
+    if state.agent is None:
+        state.agent = get_vanna_agent()
+        state.chat_handler = ChatHandler(state.agent)
+    return state
+
+
 @mcp.tool()
 async def vanna_chat_stream(
     ctx: Context,
@@ -62,6 +87,7 @@ async def vanna_chat_stream(
     """
     _ = agent_id
     state = get_state(ctx)
+    state = ensure_initialized(state)
 
     async for event in chat_stream_from_handler(
         chat_handler=state.chat_handler,
@@ -169,6 +195,7 @@ if __name__ == "__main__":
 
         logger.info("All critical configurations validated successfully")
         logger.info("=" * 80)
+ 
 
         mcp.run(transport="sse")
 

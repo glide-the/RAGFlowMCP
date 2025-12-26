@@ -1,7 +1,7 @@
-import os
 from typing import Optional
 
 from chromadb.utils import embedding_functions
+from data_analyst_mcp import config
 from vanna import Agent
 from vanna.core.registry import ToolRegistry
 from vanna.core.user import RequestContext, User, UserResolver
@@ -25,21 +25,21 @@ class SimpleUserResolver(UserResolver):
 
 def _build_agent() -> Agent:
     llm = OpenAILlmService(
-        model=os.getenv("VANNA_LLM_MODEL", "deepseek-chat"),
-        api_key=os.environ["VANNA_LLM_API_KEY"],
-        base_url=os.getenv("VANNA_LLM_BASE_URL", "https://api.deepseek.com/v1"),
+        model=config.VANNA_LLM_MODEL,
+        api_key=config.VANNA_LLM_API_KEY,
+        base_url=config.VANNA_LLM_BASE_URL,
     )
 
-    db_conn_str = os.environ["VANNA_PG_CONN_STR"]
+    db_conn_str = config.VANNA_PG_CONN_STR
     db_tool = RunSqlTool(sql_runner=PostgresRunner(connection_string=db_conn_str))
 
     agent_memory = ChromaAgentMemory(
-        collection_name=os.getenv("VANNA_MEMORY_COLLECTION", "vanna_memory"),
-        persist_directory=os.getenv("VANNA_CHROMA_DIR", "./chroma_db"),
+        collection_name=config.VANNA_MEMORY_COLLECTION,
+        persist_directory=config.VANNA_CHROMA_DIR,
         embedding_function=embedding_functions.OpenAIEmbeddingFunction(
-            api_base=os.getenv("VANNA_EMBED_BASE_URL"),
-            api_key=os.environ["VANNA_EMBED_API_KEY"],
-            model_name=os.getenv("VANNA_EMBED_MODEL", "qwen3-emb-0.6b"),
+            api_base=config.VANNA_EMBED_BASE_URL,
+            api_key=config.VANNA_EMBED_API_KEY,
+            model_name=config.VANNA_EMBED_MODEL,
         ),
     )
 

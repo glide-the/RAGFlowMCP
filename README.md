@@ -42,7 +42,7 @@ VANNA_API_KEY=your_vanna_api_key
 ```
 
 Additional environment variables are required when running the local Vanna MCP server
-in `src/mcp/server/vanna_mcp_server.py` (see the section below). Copy
+in `src/data_analyst_mcp/vanna_mcp_server.py` (see the section below). Copy
 `.env.example` to `.env` and fill in the values.
 
 ## Usage
@@ -181,13 +181,13 @@ plus a single-shot tool that aggregates the stream into one response.
 ### How to Run
 
 ```bash
-uv run src/mcp/server/vanna_mcp_server.py
+uv run src/data_analyst_mcp/vanna_mcp_server.py
 ```
 
 or:
 
 ```bash
-python -m src.mcp.server.vanna_mcp_server
+python -m data_analyst_mcp.vanna_mcp_server
 ```
 
 The server runs with `streamable-http` transport:
@@ -221,7 +221,7 @@ claude mcp add vanna-mcp \
   --args "--directory" \
   "/path/to/your/project" \
   "run" \
-  "src/mcp/server/vanna_mcp_server.py"
+  "src/data_analyst_mcp/vanna_mcp_server.py"
 ```
 
 ### Available Tools

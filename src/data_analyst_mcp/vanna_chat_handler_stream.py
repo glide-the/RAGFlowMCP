@@ -1,9 +1,9 @@
-from typing import AsyncIterator, Dict, Optional
+from typing import Any, AsyncIterator, Dict, Optional
 
 from vanna.servers.base.chat_handler import ChatHandler
 from vanna.servers.base.models import ChatRequest, ChatStreamChunk
 
-from vanna_rich_chunk_adapter import chunk_to_events
+from data_analyst_mcp.vanna_rich_chunk_adapter import chunk_to_events
 
 
 async def chat_stream_from_handler(

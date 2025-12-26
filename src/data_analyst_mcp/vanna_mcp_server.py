@@ -119,7 +119,6 @@ async def vanna_chat_once(
         chat_handler=state.chat_handler,
         message=message,
         conversation_id=conversation_id,
-        user_email=user_email,
     ):
         event_type = event.get("type")
         if event_type == "end":

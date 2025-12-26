@@ -234,6 +234,15 @@ def rich_component_to_events(rich: Dict[str, Any]) -> List[Dict[str, Any]]:
         if query:
             events.append({"type": "sql", "query": query})
 
+    elif component_type == "status_bar_update":
+        status = data.get("status")
+        message = data.get("message") or ""
+        detail = data.get("detail") or ""
+        text_parts = [status, message, detail]
+        text = " ".join([part for part in text_parts if part]).strip()
+        if text:
+            events.append({"type": "text", "text": text})
+
     return events
 
 

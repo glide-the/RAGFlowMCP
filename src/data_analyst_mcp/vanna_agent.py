@@ -66,6 +66,3 @@ def get_vanna_agent() -> Agent:
     if _agent is None:
         _agent = _build_agent()
     return _agent
-
-
-agent = get_vanna_agent()

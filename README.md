@@ -162,6 +162,16 @@ plus a single-shot tool that aggregates the stream into one response.
    Missing required values will cause the server to fail during startup or tool
    execution.
 
+3. **SSE Transport Configuration**
+
+   This MCP server uses Server-Sent Events (SSE) transport, which means it runs as an HTTP server that clients can connect to. The server is configured with these settings:
+
+   - **Transport**: SSE (Server-Sent Events)
+   - **Default URL**: `http://localhost:8000/sse`
+   - **Custom Host/Port**: Set via `MCP_SERVER_HOST` and `MCP_SERVER_PORT` environment variables
+
+   The SSE transport is ideal for streaming responses from the Vanna agent, allowing real-time delivery of chat events, SQL queries, and results.
+
 ### Configuration
 
 - **LLM**
@@ -190,12 +200,16 @@ or:
 python -m data_analyst_mcp.vanna_mcp_server
 ```
 
-The server runs with `streamable-http` transport:
+The server runs with `sse` transport by default. This means it will start an HTTP server and listen for incoming SSE connections. The server binds to `http://localhost:8000` by default.
 
 ```python
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http")
+    mcp.run(transport="sse")
 ```
+
+You can specify a different host and port using environment variables:
+- `MCP_SERVER_HOST` (default: `localhost`)
+- `MCP_SERVER_PORT` (default: `8000`)
 
 #### Docker
 
@@ -214,16 +228,16 @@ The compose file expects a `.env` file at the project root (copy from
 
 #### Claude Code MCP example
 
-```bash
-claude mcp add vanna-mcp \
-  --transport streamable-http \
-  --command uv \
-  --args "--directory" \
-  "/path/to/your/project" \
-  "run" \
-  "src/data_analyst_mcp/vanna_mcp_server.py"
-```
+Since the Vanna MCP server runs with SSE transport, you need to start the server first and then connect to it via its URL.
+ 
+Then, in Claude Code, connect to the running server:
 
+```bash
+claude mcp add  \
+  --transport sse \
+  vanna-mcp http://localhost:8000/sse
+```
+  
 ### Available Tools
 
 #### `vanna_chat_stream`

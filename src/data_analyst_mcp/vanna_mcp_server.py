@@ -11,6 +11,10 @@ from data_analyst_mcp.vanna_chat_handler_stream import chat_stream_from_handler
 from mcp.server.fastmcp import Context, FastMCP
 from vanna.servers.base.chat_handler import ChatHandler
 
+import logging
+import sys
+
+from data_analyst_mcp import config
 
 @dataclass
 class AppState:
@@ -94,5 +98,82 @@ async def vanna_chat_once(
     return aggregate_vanna_events(events)
 
 
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+    ],
+)
+logger = logging.getLogger(__name__)
+
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http")
+    try:
+        log_level = getattr(logging, "INFO")
+        logging.getLogger().setLevel(log_level)
+        logger.info("Starting Vanna MCP server")
+        logger.info(f"Vanna API server is expected to be already running and available at: {config.VANNA_API_BASE_URL}")
+
+        # Log and validate vanna_agent.py related environment variables
+        logger.info("=" * 80)
+        logger.info("Vanna Agent Configuration:")
+        logger.info("=" * 80)
+
+        # LLM Configuration
+        logger.info(f"VANNA_LLM_MODEL: {config.VANNA_LLM_MODEL}")
+        logger.info(f"VANNA_LLM_BASE_URL: {config.VANNA_LLM_BASE_URL}")
+        if config.VANNA_LLM_API_KEY:
+            logger.info(f"VANNA_LLM_API_KEY: {'*' * 20}{config.VANNA_LLM_API_KEY[-4:] if len(config.VANNA_LLM_API_KEY) > 4 else '****'}")
+        else:
+            logger.warning("VANNA_LLM_API_KEY is not set - this may cause authentication failures")
+
+        # PostgreSQL Configuration
+        if config.VANNA_PG_CONN_STR:
+            logger.info(f"VANNA_PG_CONN_STR: {config.VANNA_PG_CONN_STR[:20]}...{config.VANNA_PG_CONN_STR[-10:] if len(config.VANNA_PG_CONN_STR) > 30 else config.VANNA_PG_CONN_STR}")
+        else:
+            logger.error("VANNA_PG_CONN_STR is not set - PostgreSQL connection is required for SQL execution")
+
+        # ChromaDB Memory Configuration
+        logger.info(f"VANNA_MEMORY_COLLECTION: {config.VANNA_MEMORY_COLLECTION}")
+        logger.info(f"VANNA_CHROMA_DIR: {config.VANNA_CHROMA_DIR}")
+
+        # Embedding Configuration
+        logger.info(f"VANNA_EMBED_MODEL: {config.VANNA_EMBED_MODEL}")
+        logger.info(f"VANNA_EMBED_BASE_URL: {config.VANNA_EMBED_BASE_URL}")
+        if config.VANNA_EMBED_API_KEY:
+            logger.info(f"VANNA_EMBED_API_KEY: {'*' * 20}{config.VANNA_EMBED_API_KEY[-4:] if len(config.VANNA_EMBED_API_KEY) > 4 else '****'}")
+        else:
+            logger.warning("VANNA_EMBED_API_KEY is not set - embedding functions may fail")
+
+        logger.info("=" * 80)
+
+        # Validate critical configurations
+        critical_errors = []
+        if not config.VANNA_LLM_API_KEY:
+            critical_errors.append("VANNA_LLM_API_KEY is required but not set")
+        if not config.VANNA_PG_CONN_STR:
+            critical_errors.append("VANNA_PG_CONN_STR is required but not set")
+        if not config.VANNA_EMBED_BASE_URL:
+            critical_errors.append("VANNA_EMBED_BASE_URL is required but not set")
+        if not config.VANNA_EMBED_API_KEY:
+            critical_errors.append("VANNA_EMBED_API_KEY is required but not set")
+
+        if critical_errors:
+            logger.error("Critical configuration errors detected:")
+            for error in critical_errors:
+                logger.error(f"  - {error}")
+            logger.error("Please set these environment variables before starting the server")
+            sys.exit(1)
+
+        logger.info("All critical configurations validated successfully")
+        logger.info("=" * 80)
+
+        mcp.run(transport="sse")
+
+    except KeyboardInterrupt:
+        logger.info("Server stopped by user")
+    except Exception as e:
+        logger.exception(f"Error starting server: {str(e)}")
+        sys.exit(1)

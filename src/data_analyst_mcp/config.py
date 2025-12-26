@@ -5,6 +5,10 @@ Configuration module for Vanna MCP server (with Ragflow compatibility).
 import argparse
 import os
 
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 DEFAULT_HOST = os.getenv("RAGFLOW_API_HOST", "localhost")
 DEFAULT_PORT = int(os.getenv("RAGFLOW_API_PORT", 9621))
 DEFAULT_API_KEY = os.getenv("RAGFLOW_API_KEY", "")

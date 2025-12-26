@@ -13,4 +13,4 @@ RUN pip install --no-cache-dir -e .
 
 EXPOSE 8000
 
-CMD ["python", "-m", "src.mcp.server.vanna_mcp_server"]
+CMD ["python", "-m", "data_analyst_mcp.vanna_mcp_server"]

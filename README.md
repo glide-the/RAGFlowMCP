@@ -41,6 +41,10 @@ VANNA_API_BASE=http://localhost:8000
 VANNA_API_KEY=your_vanna_api_key
 ```
 
+Additional environment variables are required when running the local Vanna MCP server
+in `src/mcp/server/vanna_mcp_server.py` (see the section below). Copy
+`.env.example` to `.env` and fill in the values.
+
 ## Usage
 
 **Important**: The MCP server should be run through an MCP client configuration file (e.g., `mcp-config.json`).
@@ -124,6 +128,148 @@ client = build_vanna_client()
 
 async for event in chat_sse_stream(client=client, message="Hello Vanna"):
     print(event)
+```
+
+## Vanna MCP Server (Local Agent)
+
+This server exposes a local Vanna `Agent` as an MCP server using `FastMCP`. It wraps
+`vanna_agent.get_vanna_agent()` and provides a streaming tool for fine-grained events
+plus a single-shot tool that aggregates the stream into one response.
+
+### Environment Setup
+
+1. **Python & dependencies**
+
+   Use the same Python version as the rest of the project (3.11+) and install the
+   package in editable mode:
+
+   ```bash
+   uv pip install -e .
+   ```
+
+2. **Environment variables**
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Then fill in the required values, especially:
+
+   - `VANNA_LLM_API_KEY`
+   - `VANNA_PG_CONN_STR`
+   - `VANNA_EMBED_API_KEY`
+
+   Missing required values will cause the server to fail during startup or tool
+   execution.
+
+### Configuration
+
+- **LLM**
+  - `VANNA_LLM_MODEL` (default: `deepseek-chat`)
+  - `VANNA_LLM_API_KEY` (**required**)
+  - `VANNA_LLM_BASE_URL` (default: `https://api.deepseek.com/v1`)
+- **PostgreSQL**
+  - `VANNA_PG_CONN_STR` (**required**)
+- **Memory / Chroma**
+  - `VANNA_MEMORY_COLLECTION` (default: `vanna_memory`)
+  - `VANNA_CHROMA_DIR` (default: `./chroma_db`)
+- **Embeddings**
+  - `VANNA_EMBED_BASE_URL` (required or depends on backend)
+  - `VANNA_EMBED_API_KEY` (**required**)
+  - `VANNA_EMBED_MODEL` (default: `qwen3-emb-0.6b`)
+
+### How to Run
+
+```bash
+uv run src/mcp/server/vanna_mcp_server.py
+```
+
+or:
+
+```bash
+python -m src.mcp.server.vanna_mcp_server
+```
+
+The server runs with `streamable-http` transport:
+
+```python
+if __name__ == "__main__":
+    mcp.run(transport="streamable-http")
+```
+
+#### Docker
+
+Build and run with the provided Dockerfile and compose file:
+
+```bash
+docker build -f Dockerfile.vanna_mcp_server -t vanna-mcp-server .
+```
+
+```bash
+docker compose -f docker-compose.vanna_mcp_server.yml up --build
+```
+
+The compose file expects a `.env` file at the project root (copy from
+`.env.example`) and exposes port `8000` by default.
+
+#### Claude Code MCP example
+
+```bash
+claude mcp add vanna-mcp \
+  --transport streamable-http \
+  --command uv \
+  --args "--directory" \
+  "/path/to/your/project" \
+  "run" \
+  "src/mcp/server/vanna_mcp_server.py"
+```
+
+### Available Tools
+
+#### `vanna_chat_stream`
+
+- **Type**: streaming tool (`AsyncIterator[Dict[str, Any]]`)
+- **Parameters**:
+  - `message: str` – user input
+  - `conversation_id: Optional[str]` – conversation ID for multi-turn chat
+  - `agent_id: Optional[str]` – optional agent selection (currently ignored)
+  - `acceptable_responses: Optional[List[str]]` – filter event types
+
+Events are produced by `chat_stream_from_handler`, passing through the local Vanna
+`ChatHandler`. Each event is a JSON dictionary representing text, SQL, images, tables,
+etc.
+
+#### `vanna_chat_once`
+
+Single-call tool that aggregates all stream events into one response using
+`aggregate_vanna_events`.
+
+### Response Format
+
+`vanna_chat_once` returns an aggregated JSON object with the following fields:
+
+- `texts: List[str]`
+- `images: List[Dict[str, Any]]`
+- `links: List[Dict[str, Any]]`
+- `buttons: List[Dict[str, Any]]`
+- `dataframes: List[Dict[str, Any]]`
+- `plotlies: List[Dict[str, Any]]`
+- `sqls: List[str]`
+- `errors: List[str]`
+- `conversation_id: Optional[str]`
+
+### MCP Tool Call Example
+
+```json
+{
+  "tool": "vanna_chat_once",
+  "params": {
+    "message": "Show me top 10 customers by revenue",
+    "conversation_id": null,
+    "agent_id": null,
+    "acceptable_responses": ["sql", "chart", "table", "text"]
+  }
+}
 ```
 
 ## Development

@@ -1,0 +1,11 @@
+services:
+  vanna-mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.vanna_mcp_server
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./chroma_db:/app/chroma_db

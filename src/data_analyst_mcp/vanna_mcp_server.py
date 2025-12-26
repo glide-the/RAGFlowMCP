@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any, AsyncGenerator, AsyncIterator, Dict, List, Optional, cast
+from typing import Any, AsyncGenerator, Dict, List, Optional
 from pydantic import Field
 
 from data_analyst_mcp import config
 from data_analyst_mcp.server import aggregate_vanna_events
 from data_analyst_mcp.vanna_agent import get_vanna_agent
 from data_analyst_mcp.vanna_chat_handler_stream import chat_stream_from_handler
-from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.fastmcp import FastMCP
 from vanna.servers.base.chat_handler import ChatHandler
 
 import logging
@@ -40,31 +39,27 @@ class AppState:
     chat_handler: ChatHandler
 
 
-@asynccontextmanager
-async def app_lifespan(_: FastMCP) -> AsyncIterator[AppState]:
-    # Lazy initialization - agent and handler will be created on first use
-    # This prevents blocking MCP initialization
-    state = AppState(agent=None, chat_handler=None)
-    try:
-        yield state
-    finally:
-        pass
+# 全局 AppState 单例
+_APP_STATE: Optional[AppState] = None
+
+
+def get_app_state() -> AppState:
+    """
+    获取全局 AppState；如果还没初始化，则创建一个占位实例，
+    实际 Vanna agent / ChatHandler 的构建仍由 ensure_initialized 完成。
+    """
+    global _APP_STATE
+    if _APP_STATE is None:
+        # 初始为 None，占位，保持与原来 lifespan 里的初始状态一致
+        _APP_STATE = AppState(agent=None, chat_handler=None)  # type: ignore[arg-type]
+    return _APP_STATE
 
 
 mcp = FastMCP(
     "VannaMCP",
     stateless_http=True,
     json_response=True,
-    lifespan=app_lifespan,
 )
-
-
-def get_state(ctx: Context) -> AppState:
-    if ctx.request_context and ctx.request_context.lifespan_context:
-        return cast(AppState, ctx.request_context.lifespan_context)
-    if getattr(ctx.server, "lifespan_state", None) is not None:
-        return cast(AppState, ctx.server.lifespan_state)
-    raise RuntimeError("Lifespan state is not available")
 
 
 def ensure_initialized(state: AppState) -> AppState:
@@ -77,7 +72,6 @@ def ensure_initialized(state: AppState) -> AppState:
 
 @mcp.tool()
 async def vanna_chat_stream(
-    ctx: Context,
     message: str,
     conversation_id: Optional[str] = None,
     agent_id: Optional[str] = None,
@@ -87,8 +81,7 @@ async def vanna_chat_stream(
     Stream responses from a local Vanna ChatHandler as chat SSE events.
     """
     _ = agent_id
-    state = get_state(ctx)
-    state = ensure_initialized(state)
+    state = ensure_initialized(get_app_state())
 
     async for event in chat_stream_from_handler(
         chat_handler=state.chat_handler,
@@ -106,7 +99,6 @@ async def vanna_chat_stream(
 
 @mcp.tool()
 async def vanna_chat_once(
-    ctx: Context,
     message: str = Field(description="User message to send to Vanna"),
     user_email: Optional[str] = Field(default=None, description="User email"),
     conversation_id: Optional[str] = Field(
@@ -120,14 +112,21 @@ async def vanna_chat_once(
     ),
 ) -> Dict[str, Any]:
     """Return aggregated chat output for a single message."""
+    _ = agent_id
+    state = ensure_initialized(get_app_state())
     events: List[Dict[str, Any]] = []
-    async for event in vanna_chat_stream(
-        ctx=ctx,
+    async for event in chat_stream_from_handler(
+        chat_handler=state.chat_handler,
         message=message,
         conversation_id=conversation_id,
-        agent_id=agent_id,
-        acceptable_responses=acceptable_responses,
+        user_email=user_email,
     ):
+        event_type = event.get("type")
+        if event_type == "end":
+            events.append(event)
+            continue
+        if acceptable_responses and event_type not in acceptable_responses:
+            continue
         events.append(event)
     return aggregate_vanna_events(events)
 

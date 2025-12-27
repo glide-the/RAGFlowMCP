@@ -32,6 +32,8 @@ DEFAULT_VANNA_EMBED_BASE_URL = os.getenv("VANNA_EMBED_BASE_URL", "")
 DEFAULT_VANNA_EMBED_API_KEY = os.getenv("VANNA_EMBED_API_KEY", "")
 DEFAULT_VANNA_EMBED_MODEL = os.getenv("VANNA_EMBED_MODEL", "qwen3-emb-0.6b")
 
+DEFAULT_RICH_ASSET_TIMEOUT = float(os.getenv("RICH_ASSET_TIMEOUT", "8"))
+
 
 def parse_args():
     """Parse command line arguments for Vanna MCP server."""
@@ -71,6 +73,8 @@ RAGFLOW_API_HOST = args.host
 RAGFLOW_API_PORT = args.port
 RAGFLOW_API_KEY = args.api_key
 RAGFLOW_API_BASE_URL = args.base_url or f"http://{RAGFLOW_API_HOST}:{RAGFLOW_API_PORT}"
+RICH_ASSET_BASE_URL = os.getenv("RICH_ASSET_BASE_URL", RAGFLOW_API_BASE_URL)
+RICH_ASSET_TIMEOUT = DEFAULT_RICH_ASSET_TIMEOUT
 
 VANNA_API_KEY = args.vanna_api_key
 VANNA_API_BASE_URL = args.vanna_base_url or f"http://{DEFAULT_VANNA_HOST}:{DEFAULT_VANNA_PORT}"

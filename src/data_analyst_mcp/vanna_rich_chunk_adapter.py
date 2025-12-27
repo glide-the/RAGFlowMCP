@@ -1,6 +1,12 @@
+import logging
 from typing import Any, Dict, Iterable, List, Optional
 
+import httpx
 from vanna.servers.base.models import ChatStreamChunk
+
+from data_analyst_mcp import config
+
+logger = logging.getLogger(__name__)
 
 
 _IMAGE_TYPES = {
@@ -189,17 +195,10 @@ def rich_component_to_events(rich: Dict[str, Any]) -> List[Dict[str, Any]]:
             events.append(buttons_event)
 
     elif component_type == "dataframe":
-        events.append({"type": "dataframe", "json_table": data})
+        events.append(_build_dataframe_event_from_rich(rich))
 
     elif component_type == "chart":
-        json_plotly = {
-            "data": data.get("data"),
-            "layout": data.get("layout"),
-        }
-        if "title" in data:
-            json_plotly.setdefault("layout", {})
-            json_plotly["layout"].setdefault("title", data["title"])
-        events.append({"type": "plotly", "json_plotly": json_plotly})
+        events.append(_build_plotly_event_from_rich(rich))
 
     elif component_type == "artifact":
         artifact_id = data.get("artifact_id") or rich.get("id")
@@ -246,16 +245,160 @@ def rich_component_to_events(rich: Dict[str, Any]) -> List[Dict[str, Any]]:
     return events
 
 
-def chunk_to_events(chunk: ChatStreamChunk) -> List[Dict[str, Any]]:
-    """Convert a ChatStreamChunk to Vanna chat SSE events."""
-    base_events = rich_component_to_events(chunk.rich or {})
-    events: List[Dict[str, Any]] = []
+def _build_dataframe_event_from_rich(rich: Dict[str, Any]) -> Dict[str, Any]:
+    data = rich.get("data", {}) or {}
+    return {"type": "dataframe", "json_table": data}
 
-    for event in base_events:
+
+def _build_plotly_event_from_rich(rich: Dict[str, Any]) -> Dict[str, Any]:
+    data = rich.get("data", {}) or {}
+    json_plotly = {
+        "data": data.get("data"),
+        "layout": data.get("layout"),
+        "config": data.get("config"),
+    }
+    if "title" in data:
+        json_plotly.setdefault("layout", {})
+        json_plotly["layout"].setdefault("title", data["title"])
+    return {"type": "plotly", "json_plotly": json_plotly}
+
+
+def _build_link_event_for_dataframe(
+    chunk: ChatStreamChunk,
+    asset: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
+    url = asset.get("url")
+    if not url:
+        return None
+    data = (chunk.rich or {}).get("data", {}) or {}
+    title = data.get("title") or asset.get("filename") or "Download DataFrame"
+    description = data.get("description") or "Download result data as file"
+    return {
+        "type": "link",
+        "title": title,
+        "url": url,
+        "description": description,
+    }
+
+
+def _build_image_event_for_chart(
+    chunk: ChatStreamChunk,
+    asset: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
+    preview_url = asset.get("preview_url")
+    if not preview_url:
+        return None
+    data = (chunk.rich or {}).get("data", {}) or {}
+    caption = data.get("title") or "Chart Preview"
+    return {
+        "type": "image",
+        "image_url": preview_url,
+        "caption": caption,
+    }
+
+
+def _export_dataframe_asset(chunk: ChatStreamChunk) -> Optional[Dict[str, Any]]:
+    rich = chunk.rich or {}
+    data = rich.get("data", {}) or {}
+    if not data.get("exportable", True):
+        return None
+    payload = {
+        "conversation_id": chunk.conversation_id,
+        "request_id": chunk.request_id,
+        "rich": {
+            "id": rich.get("id"),
+            "type": "dataframe",
+            "lifecycle": rich.get("lifecycle", "create"),
+            "timestamp": rich.get("timestamp", chunk.timestamp),
+            "visible": rich.get("visible", True),
+            "interactive": rich.get("interactive", False),
+            "data": data,
+        },
+        "export": {
+            "format": "csv",
+            "filename": data.get("title", "dataframe_export.csv"),
+            "include_index": False,
+            "encoding": "utf-8",
+        },
+    }
+    try:
+        response = httpx.post(
+            f"{config.RICH_ASSET_BASE_URL}/api/v0/rich_assets/dataframe/export",
+            json=payload,
+            timeout=config.RICH_ASSET_TIMEOUT,
+        )
+        response.raise_for_status()
+        return response.json().get("asset")
+    except httpx.HTTPError as exc:
+        logger.warning("export dataframe asset failed: %s", exc)
+        return None
+
+
+def _render_chart_asset(chunk: ChatStreamChunk) -> Optional[Dict[str, Any]]:
+    rich = chunk.rich or {}
+    data = rich.get("data", {}) or {}
+    payload = {
+        "conversation_id": chunk.conversation_id,
+        "request_id": chunk.request_id,
+        "rich": {
+            "id": rich.get("id"),
+            "type": "chart",
+            "lifecycle": rich.get("lifecycle", "create"),
+            "timestamp": rich.get("timestamp", chunk.timestamp),
+            "visible": rich.get("visible", True),
+            "interactive": rich.get("interactive", False),
+            "data": data,
+        },
+        "render": {
+            "format": "png",
+            "scale": 2,
+            "width": 1200,
+            "height": 600,
+            "background": "white",
+        },
+    }
+    try:
+        response = httpx.post(
+            f"{config.RICH_ASSET_BASE_URL}/api/v0/rich_assets/chart/render",
+            json=payload,
+            timeout=config.RICH_ASSET_TIMEOUT,
+        )
+        response.raise_for_status()
+        return response.json().get("asset")
+    except httpx.HTTPError as exc:
+        logger.warning("render chart asset failed: %s", exc)
+        return None
+
+
+def _attach_identifiers(chunk: ChatStreamChunk, events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    for event in events:
         if chunk.conversation_id:
             event.setdefault("conversation_id", chunk.conversation_id)
         if chunk.request_id:
             event.setdefault("request_id", chunk.request_id)
-        events.append(event)
-
     return events
+
+
+def chunk_to_events(chunk: ChatStreamChunk) -> List[Dict[str, Any]]:
+    """Convert a ChatStreamChunk to Vanna chat SSE events."""
+    rich = chunk.rich or {}
+    component_type = (rich.get("type") or "").lower()
+
+    if component_type == "dataframe":
+        events: List[Dict[str, Any]] = [_build_dataframe_event_from_rich(rich)]
+        asset = _export_dataframe_asset(chunk)
+        link_event = _build_link_event_for_dataframe(chunk, asset or {})
+        if link_event:
+            events.append(link_event)
+        return _attach_identifiers(chunk, events)
+
+    if component_type == "chart":
+        events = [_build_plotly_event_from_rich(rich)]
+        asset = _render_chart_asset(chunk)
+        image_event = _build_image_event_for_chart(chunk, asset or {})
+        if image_event:
+            events.append(image_event)
+        return _attach_identifiers(chunk, events)
+
+    base_events = rich_component_to_events(rich)
+    return _attach_identifiers(chunk, base_events)
